@@ -1,0 +1,58 @@
+# Setup:
+# - install `podman` and `docker-compose`
+# - run `systemctl --user enable --now podman.socket`
+
+# Usage:
+# - Open IDE: `podman compose --progress=plain up --build`
+# - Additional shell: `podman exec -it demo3-ide bash`
+# - Root shell: `podman exec -it demo3-ide --user root bash`
+
+name: "demo3"
+
+services:
+  ide:
+    build:
+      context: "."
+      args: [ "USER", "XDG_RUNTIME_DIR", "LANG" ]
+    image: "${COMPOSE_PROJECT_NAME}-ide"
+    pull_policy: "never"
+    container_name: "${COMPOSE_PROJECT_NAME}-ide"
+    hostname: "${COMPOSE_PROJECT_NAME}-ide"
+    userns_mode: "keep-id"
+    # Increase shared memory size for chromium
+    shm_size: "2gb"
+    ports:
+      - "127.0.0.1:26482:26482"
+      - "127.0.0.1:8000:8000"
+    environment:
+      - "EDITOR"
+      - "SHELL"
+      - "TERM"
+      - "TZ"
+      # modern config variables
+      - "XDG_RUNTIME_DIR"
+      # Support for legacy X11 GUI applications
+      - "DISPLAY"
+      - "XAUTHORITY"
+      # Support for wayland GUI applications
+      - "WAYLAND_DISPLAY"
+    volumes:
+      # Provide a $HOME directory that is actually just a subdirectory in the "read" $HOME
+      - "$HOME/Sandboxes/2026-sandboxing-sed:$HOME"
+      # Make the project directories available
+      - "$HOME/Projects/2026/sandboxing:$HOME/Projects/2026/sandboxing"
+      # Make some select files from $HOME available (read-only)
+      - "$HOME/.bashrc:$HOME/.bashrc:ro"
+      # Support for legacy X11 GUI applications
+      - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
+      - "$XAUTHORITY:$XAUTHORITY:ro"
+      # Support for wayland GUI applications
+      - "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:ro"
+      # Required for podman user-space networking
+      - "/dev/net/tun:/dev/net/tun:ro"
+      # Required for hardware accelerated rendering
+      - "/dev/dri:/dev/dri:ro"
+    tmpfs:
+      - "/tmp"
+      - "/var/tmp"
+      - "$XDG_RUNTIME_DIR:mode=777"

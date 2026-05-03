@@ -1,0 +1,7 @@
+#!/bin/sh
+
+set -eu
+
+mkdir -p /tmp/x
+cd /tmp/x
+python3 -m http.server

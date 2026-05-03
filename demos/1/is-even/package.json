@@ -1,0 +1,7 @@
+{
+  "name": "is-even",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./index.js",
+  "scripts": {}
+}

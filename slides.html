@@ -1,0 +1,997 @@
+<!doctype html>
+<head>
+  <title>Security</title>
+  <meta charset="UTF-8" />
+  <base target="_blank" />
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./andrena.css" />
+  <link rel="stylesheet" href="./node_modules/reveal.js/dist/reveal.css" />
+  <link rel="stylesheet" href="./node_modules/reveal.js/plugin/highlight/monokai.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "reveal.js": "./node_modules/reveal.js/dist/reveal.esm.js",
+        "reveal.js/": "./node_modules/reveal.js/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <script type="module">
+    import Reveal from "reveal.js"
+    import RevealHighlight from "reveal.js/plugin/highlight/highlight.esm.js"
+    import RevealZoom from "reveal.js/plugin/zoom/zoom.esm.js"
+    import RevealNotes from "reveal.js/plugin/notes/notes.esm.js"
+
+    const deck = new Reveal()
+
+    const highlightPlugin = RevealHighlight()
+    // Workaround against TypeError: Converting circular structure to JSON
+    //Object.defineProperty(highlightPlugin, "hljs", { value: highlightPlugin.hljs, enumerable: false });
+
+    await deck.initialize({
+      slideNumber: "c/t",
+      hash: true,
+      plugins: [highlightPlugin, RevealZoom(), RevealNotes()],
+      controls: false,
+      totalTime: 45 * 60,
+    })
+  </script>
+
+  <div class="reveal">
+    <div class="slides">
+      <section class="cover">
+        <h1>Sandboxing gegen Supply-Chain-Attacken</h1>
+        <hr />
+        <img src="img/sofware-excellence-day.png" alt="Sofware Excellence Day" />
+        <p>Michael Zugelder</p>
+        <p>2026-05-07</p>
+      </section>
+
+      <section>
+        <h1>Überblick</h1>
+        <ol>
+          <li>Bestandsaufnahme</li>
+          <li>Sandboxing mit Demos</li>
+          <li>... und noch viel weiter!</li>
+        </ol>
+
+        <aside class="notes">
+          Zielgruppe: Fortgeschritten <br />
+          Betriebssysteme: Linux, Windows (WSL)
+        </aside>
+      </section>
+
+      <section>
+        <section>
+          <h1>Bestandsaufnahme</h1>
+          <h2>Supply-Chain-Security</h2>
+        </section>
+
+        <section>
+          <iframe
+            src="https://editor.p5js.org/isohedral/full/vJa5RiZWs"
+            frameborder="0"
+            width="390px"
+            height="535px"
+          ></iframe>
+          <figcaption>
+            <a href="https://creativecommons.org/licenses/by-nc/2.5/">CC BY-NC 2.5</a>
+            <a href="https://xkcd.com/1200/">https://xkcd.com/1200/</a>
+            <a href="https://editor.p5js.org/isohedral/full/vJa5RiZWs"
+              >https://editor.p5js.org/isohedral/full/vJa5RiZWs</a
+            >
+          </figcaption>
+        </section>
+
+        <section>
+          <h1>Wie schlimm ist es?</h1>
+          <ul>
+            <li class="fragment fade-up">
+              PyPI verteilt Malware (z.B.
+              <a href="https://pytorch.org/blog/compromised-nightly-dependency/">PyTorch-nightly</a>,
+              <a href="https://github.com/Lightning-AI/pytorch-lightning/security/advisories/GHSA-w37p-236h-pfx3"
+                >PyTorch Lightning</a
+              >, <a href="https://github.com/BerriAI/litellm/issues/24518">LiteLLM</a>,
+              <a
+                href="https://www.stepsecurity.io/blog/supply-chain-security-alert-num2words-pypi-package-shows-signs-of-compromise"
+                >num2words</a
+              >, <a href="https://github.com/elementary-data/elementary/issues/2205">elementary-data</a>)
+            </li>
+            <li class="fragment fade-up">
+              Maven(Central) verteilt Malware (<a
+                href="https://www.aikido.dev/blog/maven-central-jackson-typosquatting-malware"
+                >org.fasterxml.jackson.core:jackson-databind</a
+              >,
+              <a href="https://www.sonatype.com/blog/malware-removed-from-maven-central"
+                >com.github.codingandcoding:maven-compiler-plugin</a
+              >)
+            </li>
+            <li class="fragment fade-up">
+              Microsoft verteilt Malware (npm):
+              <ul>
+                <li>
+                  <a
+                    href="https://www.stepsecurity.io/blog/supply-chain-security-alert-eslint-config-prettier-package-shows-signs-of-compromise"
+                    >Juli 2025</a
+                  >: eslint-config-prettier, got-fetch, ...
+                </li>
+                <li><a href="https://www.wiz.io/blog/s1ngularitys-aftermath">August 2025</a>: nx</li>
+                <li>
+                  <a href="https://www.aikido.dev/blog/npm-debug-and-chalk-packages-compromised">September 2025</a>:
+                  chalk, debug, ansi-styles, ...
+                </li>
+                <li>
+                  <a href="https://www.wiz.io/blog/shai-hulud-2-0-ongoing-supply-chain-attack">November 2025</a>:
+                  posthog, postman, @asyncapi, ...
+                </li>
+                <li><a href="https://github.com/axios/axios/issues/10636">März 2026</a>: axios</li>
+                <li>
+                  <a href="https://www.aikido.dev/blog/mini-shai-hulud-has-appeared">April 2026</a>: @cap-js (<a
+                    href="https://www.aikido.dev/blog/mini-shai-hulud-has-appeared"
+                    >SAP</a
+                  >), Bitwarden CLI, ...
+                </li>
+              </ul>
+            </li>
+            <li class="fragment fade-up">
+              Debian (unstable) verteilt Malware (<a href="https://snyk.io/de/blog/the-xz-backdoor-cve-2024-3094/">xz</a
+              >)
+            </li>
+          </ul>
+        </section>
+
+        <!--        <section>-->
+        <!--          <h1>Was kann schief gehen?</h1>-->
+        <!--          <ul>-->
+        <!--            <li class="fragment">-->
+        <!--              Erste Gedanken: Produktionssysteme-->
+        <!--              <ul>-->
+        <!--                <li>Denial of Service (Umsatzverlust) 🔥</li>-->
+        <!--                <li>Kundendaten lesen (Erpressung mit Datenleck) ☠️</li>-->
+        <!--                <li>Kundendaten unbefugt ändern (Ransomware) ☠️</li>-->
+        <!--              </ul>-->
+        <!--            </li>-->
+        <!--            <li class="fragment">aber die eigene Software ist nur die Spitze des Eisbergs...</li>-->
+        <!--          </ul>-->
+        <!--        </section>-->
+
+        <!--        <section>-->
+        <!--          <figure>-->
+        <!--            <img src="img/myl68j4u6e2g1.png" width="400">-->
+        <!--            <figcaption>-->
+        <!--              <a href="https://creativecommons.org/licenses/by-nc/2.5/">CC BY-NC 2.5</a>-->
+        <!--              <a href="https://xkcd.com/1200/">https://www.reddit.com/r/ProgrammerHumor/comments/1p204nx/</a>-->
+        <!--            </figcaption>-->
+        <!--          </figure>-->
+        <!--        </section>-->
+
+        <!--        <section>-->
+        <!--          <h1>Supply-Chain-Security</h1>-->
+        <!--          <ul class="r-stack">-->
+        <!--            <li class="fragment current-visible">-->
+        <!--              Source-Code-->
+        <!--              <ul>-->
+        <!--                <li>-->
+        <!--                  Source-Code lesen können (sollte aus Security-Sicht egal sein, soll aber oft geheim gehalten werden)-->
+        <!--                  🌧️-->
+        <!--                </li>-->
+        <!--                <li>Schadcode in genutzte Abhängigkeiten bringen 🔥</li>-->
+        <!--                <li>Source-Code ändern können 🔥</li>-->
+        <!--              </ul>-->
+        <!--            </li>-->
+        <!--            <li class="fragment current-visible">-->
+        <!--              Interne Systeme-->
+        <!--              <ul>-->
+        <!--                <li>-->
+        <!--                  sind oft weniger gesichert (1980er-Jahre-Annahme, dass man ein sicher abgetrenntes Intranet haben-->
+        <!--                  kann)-->
+        <!--                </li>-->
+        <!--                <li>-->
+        <!--                  bei Windows-Landschaften wird dann typischerweise das komplette Unternehmensnetz infiltriert (lateral-->
+        <!--                  movement)-->
+        <!--                </li>-->
+        <!--              </ul>-->
+        <!--            </li>-->
+        <!--            <li class="fragment current-visible">-->
+        <!--              Externe Systeme-->
+        <!--              <ul>-->
+        <!--                <li>SSO-Sessions, Outlook, Teams, GitHub/GitLab 🔥</li>-->
+        <!--                <li>MFA hilft typischerweise nicht (Session-Stealer)</li>-->
+        <!--              </ul>-->
+        <!--            </li>-->
+        <!--          </ul>-->
+        <!--        </section>-->
+      </section>
+
+      <section>
+        <section>
+          <h1>Schutzziele</h1>
+          <ul>
+            <li class="fragment" data-fragment-index="1">
+              <span class="fragment strike" data-fragment-index="9">
+                Schutz vor 13-Jährigen, die F12 drücken können?
+              </span>
+            </li>
+            <li class="fragment" data-fragment-index="2">
+              Schutz davor, dass hunderte/tausende unbezahlte Freiwillige <em>niemals</em> auf eine Phishing-Mail
+              hereinfallen?
+            </li>
+            <li class="fragment" data-fragment-index="3">
+              <span class="fragment strike" data-fragment-index="8">
+                Schutz vor "Security"-Produkten, die oft mit viel zu hohen Privilegien laufen und peinlichste
+                Schwachstellen aufreißen? (SolarWinds, Ivanti, Cisco, F5, SonicWall, TrendMicro, Microsoft Malware
+                Protection Engine, ...)
+              </span>
+            </li>
+            <li class="fragment" data-fragment-index="4">Schutz vor organisierter Kriminalität? (Ransomware, ...)</li>
+            <li class="fragment" data-fragment-index="5">
+              <span class="fragment strike" data-fragment-index="7">Schutz vor Geheimdiensten?</span>
+            </li>
+            <li class="fragment" data-fragment-index="6">
+              <span class="fragment strike" data-fragment-index="7"
+                >Schutz vor US-Firmen/Behörden? (FISA section 702, CLOUD act, National security letters, ...)</span
+              >
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Gängige Gegenmaßnahmen</h1>
+          <ul>
+            <li>Dependency-Pinning</li>
+            <li>Pakete nicht schon Code allein beim Installieren ausführen lassen</li>
+            <li>Updates nicht sofort machen</li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Gegenmaßnahmen</h1>
+          <h2>Dependency-Pinning</h2>
+          <ul class="fragment">
+            <li>Grundidee: Abhängigkeiten exakt im Repository definieren</li>
+            <li><b>Absolut sinnvoll und notwendige Voraussetzung.</b></li>
+            <li>
+              Aber: kann Updates verlangsamen (Tools wie <a href="https://docs.renovatebot.com/">Renovate</a> helfen)
+            </li>
+            <li>
+              Teufel im Detail:
+              <ul>
+                <li>GitHub-Actions und Docker-Images müssen über Digest gepinnt werden</li>
+                <li>Manche Entwicklungs-Tools installieren trotzdem neueste Versionen</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Korrektes Dependency-Pinning</h1>
+          <div class="r-stack">
+            <div class="fragment current-visible">
+              <h2>Docker</h2>
+              <ul>
+                <li><code>docker.io/node</code> ❌</li>
+                <li><code>docker.io/node:latest</code> ❌</li>
+                <li><code>docker.io/node:24.15</code> ❌</li>
+                <li><code>docker.io/node:24.15.0</code> ❌</li>
+                <li><code>docker.io/node:24.15.0@sha256:3a198147c320bc4…</code> ✅</li>
+              </ul>
+            </div>
+
+            <div class="fragment current-visible">
+              <h2>GitHub Actions</h2>
+              <ul>
+                <li><code>actions/checkout</code> ❌</li>
+                <li><code>actions/checkout@main</code> ❌</li>
+                <li><code>actions/checkout@v5</code> ❌</li>
+                <li><code>actions/checkout@v5.0.0</code> ❌</li>
+                <li><code>actions/checkout@08c6903cd8c0fde910a… # v5.0.0</code> ✅</li>
+              </ul>
+            </div>
+
+            <div class="fragment current-visible">
+              <h2>Entwicklungstools, die ungefragt brandneue Versionen installieren</h2>
+              <ul>
+                <li>
+                  <a href="https://marketplace.visualstudio.com/items?itemName=nrwl.angular-console"
+                    >Nx Console (VS Code Extension)</a
+                  >
+                  <ul>
+                    <li>
+                      hatte explizit <code>npx nx@latest --version</code> ausgeführt (und damit
+                      <a href="https://github.com/nrwl/nx/issues/32522#issuecomment-3229760411"
+                        >alleine durchs IDE starten Malware installiert)</a
+                      >
+                    </li>
+                    <li>
+                      hat ein AI-Check Feature (Stand April 2026), was über Timer vollautomatisch die Malware in
+                      <code>axios</code>
+                      <a href="https://github.com/nrwl/nx-console/issues/3103">installiert hat</a>
+                    </li>
+                  </ul>
+                </li>
+                <li>Gibt vermutlich viele Beispiele, aber meist passiert ja nichts...</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h1>Gegenmaßnahmen</h1>
+          <h2>Code nicht während der Installation ausführen</h2>
+          <!-- Damit wird die Schadsoftware nicht mehr ausgeführt.-->
+          <ul>
+            <li class="fragment">Keine schlechte Idee, aber bei <code>npm</code> mit <code>ignore-scripts</code>:</li>
+            <li class="fragment">Deaktiviert auch die <em>eigenen</em> Scripts</li>
+            <li class="fragment">
+              Malware braucht <code>postinstall</code> nicht, um Schaden anzurichten
+              <div class="fragment rainbow">Demo 1: Malware mit/ohne <code>postinstall</code></div>
+            </li>
+            <li class="fragment">
+              Es gibt ein Schlupfloch (trotz <code>ignore-scripts</code>) Code direkt während der Installation ausführen
+              zu können
+              <ul>
+                <li>
+                  ab <code>npm 11.9.0</code>: mit <code>allow-git=none</code>
+                  <a href="https://github.com/npm/cli/pull/8950">deaktivierbar</a>
+                </li>
+                <li>wird erst mit <code>npm 12</code> standardmäßig deaktiviert sein (weil breaking change)</li>
+              </ul>
+            </li>
+          </ul>
+
+          <aside class="notes">
+            <pre style="white-space: pre-line">
+              $ podman exec -it demo3-ide ~/Projects/2026/sandboxing/demos/evil.example
+              demos/1/some-project$ npm install
+              $ npm install ../is-even
+              $ npm start
+              # is-even angreifen (postinstall)...
+              $ npm config set ignore-scripts=true
+              $ npm install ../is-even
+              # nochmal is-even angreifen (import):
+              $ npm test
+              $ npm start
+            </pre>
+          </aside>
+        </section>
+
+        <section>
+          <h1>Gegenmaßnahmen</h1>
+          <h2>Updates kurz verzögern (<code>min-release-age</code>)</h2>
+          <!-- Damit finden doch andere die Schadsoftware bevor sie mich betrifft.-->
+          <ul class="fragment">
+            <li>
+              Hätte bei
+              <a href="https://blog.npmjs.org/post/180565383195/details-about-the-event-stream-incident"
+                >event-stream</a
+              >
+              oder
+              <a href="https://snyk.io/de/blog/peacenotwar-malicious-npm-node-ipc-package-vulnerability/">node-ipc</a>
+              nicht geholfen
+            </li>
+            <li class="fragment">
+              Firmen nutzen oft (sinnvollerweise) einen lokalen Mirror. Dort kann noch Malware liegen, obwohl sie
+              Upstream längst blockiert wurde.
+            </li>
+            <li class="fragment">LLM-basierte Scanner vs Prompt-Injection</li>
+            <li class="fragment">
+              <b>Verzögert Security-Updates</b>, macht Notfälle wie bei der RCE in
+              <a href="https://react.dev/blog/2025/12/03/critical-security-vulnerability-in-react-server-components"
+                >react-server-dom-webpack</a
+              >
+              komplizierter
+            </li>
+            <li class="fragment">
+              aber: <b>sehr effektiv für reine Development-Tools</b> (die nur mit vertrauenswürdigen Daten umgehen),
+              z.B. Single-Page-Applications
+            </li>
+            <!-- TODO auf bessere Prinzipien hinweisen -->
+          </ul>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h1>Gegenmaßnahmen: Sandboxing</h1>
+          <ul>
+            <li>Sandboxing: Code in einer isolierten Umgebung mit begrenzten Rechten ausführen</li>
+            <li>Kann Angriffsfläche reduzieren und den Explosionsradius begrenzen</li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Technische Mittel zur Isolation</h1>
+          <ul>
+            <li class="fragment">
+              <b>Prozesse</b>: RAM-Isolation, separate Umgebungsvariablen, etc., bringt das Betriebssystem automatisch
+              mit, zusätzlich <em>In-Process-Sandboxing </em> möglich
+            </li>
+            <li class="fragment">
+              <b>Nutzeraccounts</b>: unterschiedliche Berechtigungen (hauptsächlich im Dateisystem)
+            </li>
+            <li class="fragment"><b>Container</b>: können Dateisystem- und Netzwerk-Zugriff einschränken</li>
+            <li class="fragment"><b>Virtuelle Maschinen</b>: helfen gegen Kernel-Exploits</li>
+            <li class="fragment">
+              <b>Physische Maschinen</b>: helfen gegen Hypervisor-Exploits und Hardware-Schwachstellen
+            </li>
+          </ul>
+          <div
+            class="fragment"
+            style="
+              border: 2px solid red;
+              position: absolute;
+              width: 22rem;
+              height: 17rem;
+              left: -2rem;
+              bottom: 10rem;
+              border-radius: 50%;
+            "
+          ></div>
+        </section>
+
+        <!--        <section>-->
+        <!--          <h1>Physische Maschinen</h1>-->
+        <!--          <ul>-->
+        <!--            <li>Entwicklermaschinen typischerweise sogar besser geschützt als Produktion ✅</li>-->
+        <!--            <li>Getrennte Maschinen mit separaten CPUs und RAM vs virtuelle Maschinen in Public Cloud</li>-->
+        <!--            <li>-->
+        <!--              <a href="https://en.m.wikipedia.org/wiki/Virtual_machine_escape">Virtual Machine Escape-Schwachstellen</a>-->
+        <!--              sind nicht gerade selten-->
+        <!--            </li>-->
+        <!--          </ul>-->
+        <!--        </section>-->
+
+        <!--        <section>-->
+        <!--          <h1>Virtuelle Maschinen</h1>-->
+        <!--          <ul>-->
+        <!--            <li>Sieht man manchmal in der Praxis (z.B. WSL 2 oder VirtualBox) 👍</li>-->
+        <!--            <li>Ermöglicht einheitliches Setup (und den Host abzuschirmen)</li>-->
+        <!--            <li>Ermöglicht unterschiedliche Betriebssysteme</li>-->
+        <!--            <li>Performance: kleine Nachteile bis teilweise riesige Vorteile</li>-->
+        <!--            <li>Oft etwas unkomfortabel (Disk-Images, Speicherbedarf, Updates für das VM-Image)</li>-->
+        <!--            <li>Empfehlung (falls Windows): WSL 2 und dann native Container</li>-->
+        <!--          </ul>-->
+        <!--        </section>-->
+
+        <section>
+          <h1>Container</h1>
+          <ul>
+            <li>Sieht man oft in der Praxis <br />(z.B. Docker/Podman und Dev Containers) 👍</li>
+            <li>Ziemlich leichtgewichtig, nahezu keine Performance-Nachteile</li>
+            <li>
+              Meiner Meinung nach <b>wichtigste Maßnahme</b> (Preis/Leistung) und super Ausgangspunkt für weitere
+              Verbesserungen
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1 class="rainbow">Demo 2</h1>
+          <h2 class="rainbow">Entwicklungs-Sandbox mit Flatpak</h2>
+          <div class="r-stack">
+            <img class="fragment current-visible" src="img/Screenshot_20260503_155318.png" width="600" />
+            <img class="fragment current-visible" src="img/Screenshot_20260503_155619.png" width="600" />
+          </div>
+        </section>
+
+        <section>
+          <h1 class="rainbow">Demo 3</h1>
+          <h2 class="rainbow">Entwicklungs-Sandbox mit (Dev-)Containern</h2>
+
+          <div class="r-stack">
+            <ul class="fragment current-visible">
+              <li><a href="demos/3/Dockerfile">Dockerfile</a></li>
+              <li><a href="demos/3/docker-compose.yml">docker-compose.yml</a></li>
+              <li><a href="demos/3/entrypoint.sh">entrypoint.sh</a></li>
+              <li><a href="demos/3/containers.conf">containers.conf</a></li>
+            </ul>
+            <div class="fragment">
+              <p>Gotchas:</p>
+              <ul>
+                <li>Browser-Alternative: <code>wl-copy</code></li>
+                <li>Container: Podman in Podman braucht etwas Config</li>
+                <li>Port-Forwarding von localhost-Sockets funktioniert nicht</li>
+                <li>Habe keine guten Erfahrungen mit <code>DevContainer</code> + IntelliJ gemacht</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- <li>-->
+          <!--   IMO: wenn Dev Containers, dann unbedingt die <b>gesamte IDE</b> im Container ausführen (siehe z.B.-->
+          <!--   <a href="https://github.com/nrwl/nx/security/advisories/GHSA-cxm3-wv7p-598c">nx-Vorfall</a> mit VS Code-->
+          <!--   Extension)-->
+          <!-- </li>-->
+
+          <aside class="notes">
+            <pre style="white-space: pre-line">
+                $ podman compose --progress=plain --project-directory ~/Projects/2026/sandboxing/demos/3 up --build --detach
+            </pre>
+          </aside>
+        </section>
+
+        <section>
+          <h1>Nutzeraccounts</h1>
+          <ul>
+            <li>
+              Separate Nutzeraccounts können gut zur Isolation benutzt werden, auf Server-Betriebssystemen seit ~1970
+              üblich
+            </li>
+            <li>
+              Auf Desktop-Betriebssystemen leider oft hakelig
+              <!--                <br />-->
+              <!--              (Positivbeispiel: <a href="https://qubes-os.org">Qubes OS</a>, was aber hauptsächlich VMs einsetzt)-->
+            </li>
+            <li>
+              Selbstverständlich: nicht als <code>root</code> arbeiten
+              <ul>
+                <li>bei der täglichen Arbeit kein <code>root</code> brauchen</li>
+                <li>Stolperfalle: i.d.R. ist Zugriff auf Docker-Daemon = <code>root</code></li>
+                <li class="fragment rainbow">Demo 4: Podman hat bessere Defaults</li>
+              </ul>
+            </li>
+            <!-- Empfehlung: Docker nicht mehr nutzen (sondern Podman, das ist fast 1:1 kompatibel, braucht keinen Daemon,
+            lässt sich daher gut sandboxen und unterstützt sogar Container innerhalb Containern) -->
+            <li class="fragment">
+              Projekte von <em>unterschiedlichen</em> Kunden sollten IMO <em>mindestens</em> durch separate
+              User-Accounts (ohne alltäglichen <code>root</code>-Zugriff) isoliert werden
+              <!-- (z.B. andrena-interne Themen und das "normale" Kundenprojekt) -->
+            </li>
+          </ul>
+
+          <aside class="notes">
+            <pre style="white-space: pre-line">
+              $ /usr/bin/docker run --interactive --tty --rm alpine
+              # ls -al /etc
+
+              $ /usr/bin/docker run --interactive --tty --rm --volume /etc:/etc alpine
+              # ls -al /etc
+              # touch /etc/thisisbad
+
+              $ podman run --interactive --tty --rm --volume /etc:/etc alpine
+              # ls -al /etc
+              # touch /etc/thisisbetter
+            </pre>
+          </aside>
+        </section>
+
+        <!--  <section>-->
+        <!--    <h1>Prozesse</h1>-->
+        <!--    <ul>-->
+        <!--      <li>Fallen mir nicht viele sinnvolle/brauchbare Maßnahmen ein</li>-->
+        <!--      <li>-->
+        <!--        Secrets (z.B. API-Keys, etc.) nicht global verfügbar machen und allen Prozesse implizit geben (<code-->
+        <!--          >~/.bashrc</code-->
+        <!--        >-->
+        <!--        oder <code>/etc/profile</code>), sondern selektiv laden lassen (<code>.env</code>-Dateien)-->
+        <!--        &lt;!&ndash;-->
+        <!--      Malware kann diese in der Praxis dann höchstwahrscheinlich trotzdem noch auslesen, aber immerhin sind sie-->
+        <!--      dann nicht schon direkt im Prozess der Malware verfügbar.-->
+        <!--      &ndash;&gt;</li>-->
+        <!--    </ul>-->
+        <!--  </section>-->
+
+        <!-- <section>-->
+        <!--   <h1>Prozesse</h1>-->
+        <!--   <ul>-->
+        <!--     <li>auf Entwicklungsrechnern laufen typischerweise extrem viele unterschiedliche Prozesse</li>-->
+        <!--     <li>-->
+        <!--       Generell ist aber viel möglich und oft sinnvoll:-->
+        <!--       <ol>-->
+        <!--         <li>Privilegien abgeben</li>-->
+        <!--         <li>Aufbau einer eigenen Sandbox</li>-->
+        <!--       </ol>-->
+        <!--     </li>-->
+        <!--   </ul>-->
+        <!-- </section>-->
+
+        <!--        <section>-->
+        <!--          <h1>Prozesses</h1>-->
+        <!--          <h2>Privilegien abgeben</h2>-->
+        <!--          <ul>-->
+        <!--            <li>-->
+        <!--              z.B. Unix-Daemons starten oft als <code>root</code> zur Initialisierung und wechseln dann auf einen-->
+        <!--              eingeschränkten Account mit eingeschränkten Dateisystem-->
+        <!--            </li>-->
+        <!--            <li>-->
+        <!--              seit grob 10 Jahren möglich: Linux-Namespaces und Syscall-Filter (damit sind unter Linux Container-->
+        <!--              implementiert)-->
+        <!--            </li>-->
+        <!--            <li>ziemlich fortgeschrittene Features und braucht Integration in den zu schützenden Prozess</li>-->
+        <!--            <li>IMO eher für die <em>Anwendung</em> und weniger für <em>Entwicklungs-Tools</em> sinnvoll</li>-->
+        <!--          </ul>-->
+        <!--        </section>-->
+
+        <section>
+          <h1>Prozesse</h1>
+          <h2>In-Process-Sandboxes</h2>
+          <div class="r-stack">
+            <ul class="fragment current-visible">
+              <li>Nutzt ihr alle täglich und sind super-praktisch, z.B. JavaScript-Runtimes oder WebAssembly</li>
+              <li>Maschinencode wird nicht <em>direkt</em> ausgeführt</li>
+              <li>
+                Code wird interpretiert/generiert/verifiziert und kann I/O nur über explizit gesicherte APIs durchführen
+              </li>
+              <li>
+                Deno und Node.js haben eine integrierte Sandbox, womit man weniger vertrauenswürdiges JavaScript erstmal
+                (mehr oder weniger) geschützt starten kann
+              </li>
+            </ul>
+            <ul class="fragment current-visible">
+              <li class="rainbow">
+                Demo 5: Sandbox von <code>node</code> und <code>deno</code>
+                <br />
+                <img src="img/Screenshot_20260503_175314.png" width="990" />
+              </li>
+            </ul>
+            <ul class="fragment current-visible">
+              <li>
+                Sich beim Entwickeln damit alleine mit In-Process-Sandboxing vor Malware zu schützen halte ich für
+                unrealistisch (zu viele unterschiedliche Prozesse, oft nativer Code Teil von Tests/Builds)
+              </li>
+              <li>
+                Oft <em>scheitern</em> Versuche, eine sichere Sandbox im Prozess zu bauen, z.B.: Java Applets (<a
+                  href="https://openjdk.org/jeps/289"
+                  >1</a
+                >, <a href="https://blog.mozilla.org/futurereleases/2015/10/08/npapi-plugins-in-firefox/">2</a>,
+                <a href="https://blog.chromium.org/2013/09/saying-goodbye-to-our-old-friend-npapi.html">3</a>),
+                <a href="https://docs.angularjs.org/guide/security#sandbox-removal">Angular.js expression sandbox</a>,
+                <a href="https://github.com/googlearchive/caja?tab=readme-ov-file#deprecation">Google Caja</a>,
+                <a
+                  href="https://support.microsoft.com/de-de/windows/veraltete-activex-steuerelemente-3ad33b2d-1cee-5d46-1234-e70714324850"
+                  >ActiveX</a
+                >, <a href="https://stackless.readthedocs.io/en/2.7-slp/library/rexec.html">Python <code>rexec</code></a
+                >,
+                <a href="https://www.ruby-lang.org/en/news/2020/12/25/ruby-3-0-0-released/">Ruby <code>$SAFE</code></a
+                >, ...
+              </li>
+            </ul>
+          </div>
+          <aside class="notes">
+            <pre style="white-space: pre-line">
+              (in sandbox!)
+              $ node demos/5/test.js
+              $ deno demos/5/test.js
+              $ node --permission --allow-fs-read=$HOME/.ssh demos/5/test.js
+              $ deno demos/5/test_shell.js
+            </pre>
+          </aside>
+        </section>
+
+        <section>
+          <h1>Fazit</h1>
+          <h2>Empfehlenswerte Supply-Chain-Security-Maßnahmen</h2>
+          <ul>
+            <li>
+              Wissen, welcher externer Code benutzt wird und sicherstellen, dass nicht ohne Änderung neuer Code geladen
+              wird
+            </li>
+            <li>
+              Abhängigkeiten, die nur <em>während der Entwicklung</em> verwendet werden und nur
+              <em>vertrauenswürdigen Daten</em> verarbeiten: lieber zu alt als zu neu
+            </li>
+            <li>Kundenprojekte abtrennen: separate Maschinen, Nutzer-Accounts, VMs, oder (Dev-)Container</li>
+            <li>
+              Insbesondere sollten lokale Entwicklungstools nicht auf das Browser-Profil oder den Secret-Store zugreifen
+              dürfen
+            </li>
+            <!--              <ul>-->
+            <!--                <li>-->
+            <!--                  Windows: allein WSL 2 zu nutzen hilft etwas, die praktischen Integrations-Features sind allerdings auch-->
+            <!--                  <em>für Angreifer</em> praktisch-->
+            <!--                </li>-->
+            <!--              </ul>-->
+          </ul>
+        </section>
+      </section>
+
+      <!--      <section>-->
+      <!--        <section>-->
+      <!--          <h1>Konfiguration härten</h1>-->
+      <!--          <ul>-->
+      <!--            <li class="fragment">-->
+      <!--              <code>npm ignore-scripts</code> aktivieren (bzw. <code>yarn enableScripts</code> deaktivieren oder z.B.-->
+      <!--              <code>pnpm</code>, <code>deno</code>, <code>bun</code> nutzen)-->
+      <!--            </li>-->
+      <!--            <li class="fragment">-->
+      <!--              Nicht <em>sofort</em> auf die neusten Versionen wechseln (Stand 2025-11)-->
+      <!--              <ul>-->
+      <!--                <li>-->
+      <!--                  ❌ <code>npm</code>:-->
+      <!--                  <a href="https://github.com/npm/cli/issues/8570"-->
+      <!--                    >nur ziemlich umständlich nutzbares <code>&#45;&#45;before</code> flag</a-->
+      <!--                  >-->
+      <!--                </li>-->
+      <!--                <li>-->
+      <!--                  ⚠️ Renovate:-->
+      <!--                  <a href="https://github.com/renovatebot/renovate/discussions/38115">minimumReleaseAge</a> funktioniert-->
+      <!--                  nur für <em>direkte</em> Dependencies (und ist damit fast komplett nutzlos wenn mit-->
+      <!--                  <code>npm</code> genutzt)-->
+      <!--                </li>-->
+      <!--                <li>-->
+      <!--                  ☑️ <code>deno</code>: noch-->
+      <!--                  <a href="https://github.com/denoland/deno/pull/31031">in Entwicklung</a> (verfügbar aber unstable)-->
+      <!--                </li>-->
+      <!--                <li>-->
+      <!--                  ✅ <a href="https://yarnpkg.com/configuration/yarnrc#npmMinimalAgeGate">yarn</a>,-->
+      <!--                  <a href="https://pnpm.io/settings#minimumreleaseage">pnpm</a>,-->
+      <!--                  <a href="https://bun.com/docs/pm/cli/install#minimum-release-age">bun</a>: haben entsprechende-->
+      <!--                  Einstellungen-->
+      <!--                </li>-->
+      <!--                <li>-->
+      <!--                  ⚠️ Zusätzlich werden bei manchen Projekten absichtlich die neuesten Dependencies runtergeladen (trotz-->
+      <!--                  Lockfile)-->
+      <!--                </li>-->
+      <!--              </ul>-->
+      <!--            </li>-->
+      <!--            <li class="fragment">Empfehlenswerte Config, aber kaum tatsächlicher Schutz</li>-->
+      <!--          </ul>-->
+      <!--          <aside class="notes">-->
+      <!--            <pre style="white-space: pre-line">-->
+      <!--              $ python3 -m http.server # (als evil.example)-->
+      <!--              demo-packages/some-project$ npm install-->
+      <!--              demo-packages/some-project$ npm install ../is-even-->
+      <!--              demo-packages/some-project$ npm config ignore-scripts true-->
+      <!--              demo-packages/some-project$ npm install ../is-even-->
+      <!--              demo-packages/some-project$ npm start-->
+      <!--            </pre>-->
+      <!--          </aside>-->
+      <!--        </section>-->
+
+      <!--        <section>-->
+      <!--          <h1>Vorgehensweise verbessern</h1>-->
+      <!--          <ul>-->
+      <!--            <li class="fragment">Empfehlenswert: Separate Admin-Accounts z.B. für GitLab, etc.</li>-->
+      <!--            <li class="fragment">Wissen, <em>welche</em> 3rd-party Projekte man überhaupt einsetzt</li>-->
+      <!--            <li class="fragment">Die Release-Notes bei Änderungen lesen</li>-->
+      <!--            <li class="fragment">Sich den Code <em>ansehen</em>, den man verwendet</li>-->
+      <!--            <li class="fragment">(alles auch bei transitiven Abhängigkeiten) 😇</li>-->
+      <!--            <li class="fragment rainbow">-->
+      <!--              Demo: Code-Review mit <a href="https://github.com/multiocular-com/multiocular">Multiocular</a>-->
+      <!--            </li>-->
+      <!--          </ul>-->
+      <!--          <aside class="notes">-->
+      <!--            <pre style="white-space: pre-line">-->
+      <!--              demo-packages/more-deps $ git checkout -f master~2-->
+      <!--              demo-packages/more-deps $ yarn install-->
+      <!--              demo-packages/more-deps $ yarn upgrade-interactive-->
+      <!--              demo-packages/more-deps $ yarn up &#45;&#45;recursive '*'-->
+      <!--              demo-packages/more-deps $ multiocular-->
+      <!--            </pre>-->
+      <!--          </aside>-->
+      <!--        </section>-->
+      <!--      </section>-->
+
+      <section>
+        <section>
+          <h1>Erhöhter Sicherheitsbedarf 🚀</h1>
+          <ul>
+            <li>Umgang mit hochsensiblen Daten</li>
+            <li>Login und Zahlungsabwicklung</li>
+            <li>Security-Software</li>
+            <li>Agentic AI</li>
+            <li>KRITIS</li>
+            <li>...</li>
+            <li class="fragment">
+              Konsequenzen: Security-orientiertes Design nötig, oft Performance-Einbußen, bestimmte Sprachfeatures und
+              viele Libraries nicht (direkt) einsetzbar
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Weniger Abhängigkeiten</h1>
+          <ul>
+            <li>Weniger Komplexität und Angriffsvektoren sind mehr</li>
+            <li>Sicherheitsprodukte sind oft selbst ein Angriffsvektor</li>
+            <li>Neue Sprachfeatures helfen Abhängigkeiten zu vermeiden</li>
+            <li>
+              z.B. <a href="https://knip.dev/">Knip</a> und
+              <a href="https://docs.renovatebot.com/upgrade-best-practices/">Renovate</a> können helfen
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Abhängigkeiten sichten</h1>
+          <ul>
+            <li>Radikale Idee: Code nicht ungesehen ausführen</li>
+            <li>
+              Prior Art: <a href="https://docs.renovatebot.com/">Renovate</a> und
+              <a href="https://github.com/ai/multiocular">ꙮ Multiocular</a>:
+              <br />
+              <a href="https://app.renovatebot.com/package-diff?name=parse5&from=8.0.0&to=8.0.1"
+                ><img src="img/Screenshot_20260503_172050.png" width="600"
+              /></a>
+            </li>
+            <li class="fragment">
+              Ich will das aber vollständiger und besser (<a href="diff-ui/diff-alpine.html">baue</a>
+              <a href="diff-ui/diff-parse5.html">gerade</a>
+              <a href="diff-ui/diff-lockfile.html">etwas</a>...)
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Netzwerk-Isolation/Filterung</h1>
+          <div class="r-stack">
+            <ul class="">
+              <li>Malware braucht meistens Netzwerkzugriff</li>
+              <li>Lässt sich prinzipiell ähnlich einschränken wie Dateizugriff</li>
+              <li>Ist praktisch aber viel schwieriger</li>
+              <li>DNS filtern? IP-blocken? 3rd-party Software?</li>
+              <li class="fragment">Praktisch: Anthropic hat ein paar Sandboxing-Feature/Projekte und tut etwas</li>
+              <li class="fragment">
+                Unpraktisch:
+                <a
+                  href="https://github.com/anthropics/claude-code/blob/9fce4e6ed16244127de19b1eee02508c6dc2d29e/.devcontainer/init-firewall.sh"
+                  >init-firewall.sh</a
+                >
+                lässt einfach alle IPv6-Anfragen durch (<a href="https://github.com/anthropics/claude-code/issues/24952"
+                  >issue #24952</a
+                >, "Closing for now — inactive for too long" 🤡)
+              </li>
+            </ul>
+            <ul class="fragment current-visible" style="background: white; padding: 0 10rem">
+              <li>Empfehlung: Proxy-Server in <code>docker-compose.yml</code></li>
+              <li>
+                z.B. <a href="https://www.squid-cache.org/">Squid</a> oder
+                <a href="https://www.mitmproxy.org/">mitmproxy</a><br />
+                <img src="img/mitmweb.png" alt="" />
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h1>Bessere Isolation als Container</h1>
+          <ul>
+            <li>Container helfen gegen Fehlbedienung/Bugs</li>
+            <li>Container helfen oft gegen wenig aggressive Malware...</li>
+            <li>...sind aber machtlos bei fortgeschrittenen Attacken</li>
+            <li>
+              Mögliche Gegenmaßnahmen:
+              <ul>
+                <li>Kernel aktuell halten</li>
+                <li>Virtuelle Maschinen</li>
+                <li><a href="https://gvisor.dev/">gVisor</a></li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Standard-Library festigen</h1>
+          <ul>
+            <li>
+              Viele Sprachen ermöglichen es, das Verhalten der Standard-Library vom Applikationscode dauerhaft und
+              unerwartet zu verändern
+            </li>
+            <li>
+              JavaScript:
+              <ul>
+                <li>Schadcode kann z.B. <code>Array.prototype.map</code> überschreiben</li>
+                <li>
+                  Node.js:
+                  <code><a href="https://nodejs.org/api/cli.html#frozen-intrinsics">--frozen-intrinsics</a></code>
+                </li>
+                <li>Browser: bräuchte wahrscheinlich native Unterstützung</li>
+              </ul>
+            </li>
+            <li>
+              Java:
+              <ul>
+                <li>
+                  <code>2 + 3</code> kann auch mal <code>6</code> sein (mit
+                  <a href="https://www.happycoders.eu/java/deep-reflection-how-to-hack-integer-and-string/"
+                    >Reflection und Boxed Integers</a
+                  >)
+                </li>
+                <li>
+                  <code>SecurityManager</code> kann
+                  <a
+                    href="https://windshock.github.io/en/post/2019-09-03-security-threats-and-mitigation-strategies-for-java-reflection/#applying-whitelisting-concrete-strategies"
+                    >Reflection einschränken</a
+                  >
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Dynamische Code-Erzeugung verbieten</h1>
+          <ul>
+            <li>Malware nutzt das gerne, um Code zu verschleiern</li>
+            <li>
+              Node:
+              <code
+                ><a href="https://nodejs.org/api/cli.html#disallow-code-generation-from-strings-1"
+                  >--disallow-code-generation-from-strings</a
+                ></code
+              >
+            </li>
+            <li>
+              Browser: <code>Content-Security-Policy</code> nutzen und kein
+              <code
+                ><a
+                  href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src#unsafe_eval_expressions"
+                  >unsafe-eval</a
+                ></code
+              >
+              erlauben
+            </li>
+            <li>Java: Ahead of Time Compilation</li>
+            <li>Wenig Szenarien, wo man <code>eval</code> bräuchte, meist ist auch ein Build-Schritt möglich</li>
+          </ul>
+        </section>
+
+        <section>
+          <h1>Isolation innerhalb der Anwendung</h1>
+          <ul>
+            <li>
+              Kombination mehrerer Berechtigungen erzeugt oft erst den Sicherheitsvorfall (z.B. Dateisystem & Netzwerk)
+            </li>
+            <li>
+              Anwendungsarchitektur anpassen (z.B. mehrere Prozesse/Services nutzen oder <code>wasm</code> statt nativem
+              Code)
+            </li>
+            <li>
+              Oder Policy-Mechanismen in die Anwendung integrieren, z.B. Config einer eigenen PoC-Implementierung für
+              Node.js:
+              <pre><code>{
+  "lodash": { "node:utils": ["types"] },
+  "chalk": { "node:process": true, "node:os": true, "node:tty": true ] }
+}
+</code></pre>
+            </li>
+            <li>Tools wie <a href="https://lavamoat.github.io/">LavaMoat</a> peilen eine ähnliche Isolation an</li>
+          </ul>
+        </section>
+      </section>
+
+      <section>
+        <h1>FIN</h1>
+
+        <!-- TODO -->
+        <p>
+          <img src="img/qr.png" style="position: absolute; width: 200px; left: 0px; top: 0" />
+          <a href="https://github.com/andrena/software-excellence-day-2026-sandboxing">Repo mit PDF und den Beispielen/Demos</a>
+        </p>
+        <p>Vielen Dank, insbesondere auch an:</p>
+        <ul id="thanks">
+          <li>
+            Sebastian Frühling für die
+            <a
+              href="https://teams.cloud.microsoft/l/channel/19%3A3060b2f4183a4f6db42ce0b5a96298c3%40thread.skype/Security?groupId=f9a25e3a-a739-4fae-bcfb-57be3d34785a&tenantId=bb3ec2d3-ce5f-4b8f-91b8-64566ad495ae"
+              >CoP-Security</a
+            >
+          </li>
+          <li>
+            Stefan Kranich fürs
+            <a href="https://code.andrena.de/codingdojomuc/claude-code-devcontainer">claude-code-devcontainer</a> Repo
+          </li>
+          <li>Jana Prechelt für den gemeinsamen Vortrag</li>
+          <li>Florian Ulrich für die Devcontainer-Demo</li>
+          <li>Ludwig Richter für die Container-Netzwerkisolierung</li>
+          <li>
+            Jonatan Dietz fürs
+            <a href="https://code.andrena.de/jdietz/podmaninpodmansandbox/-/blob/main/Dockerfile">Podman in Podman</a>
+            weiterdenken
+          </li>
+        </ul>
+
+        <script type="module">
+          const ul = document.getElementById("thanks")
+          for (var i = ul.children.length; i >= 0; i--) {
+            ul.appendChild(ul.children[(Math.random() * i) | 0])
+          }
+        </script>
+
+        <p style="display: flex; align-items: center; gap: 0.5em; justify-content: center">
+          <img src="./img/online.png" width="64" /><a href="https://www.andrena.de">andrena.de</a><br />
+        </p>
+      </section>
+    </div>
+  </div>
+</body>

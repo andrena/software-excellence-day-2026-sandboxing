@@ -1,0 +1,11 @@
+{
+  "name": "some-project",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node some-project.ts",
+    "test": "node --test"
+  },
+  "dependencies": {},
+  "packageManager": "npm@11.13.0+sha256.a4ffa1de3bf1c7f9d5e3dd24fe2921970bdb1589d647f4083eaaaab3be974b7e"
+}
